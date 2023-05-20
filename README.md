@@ -1,6 +1,6 @@
 ## LovIN
 
-Compatibility Meter
+### Compatibility Meter
 
 ![Screenshot from 2023-05-21 03-49-53](https://github.com/rooben-me/lovin/assets/51721541/7f7dd36f-aba6-44af-9ce9-f5a9fef5f362)
 ![Screenshot from 2023-05-21 03-50-08](https://github.com/rooben-me/lovin/assets/51721541/f0c238e3-ade5-4571-a3fb-37e571859294)
