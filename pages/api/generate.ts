@@ -1,50 +1,50 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { ChatOpenAI } from "langchain/chat_models/openai";
-import { ConversationChain } from "langchain/chains";
-import { BufferMemory } from "langchain/memory";
-import {
-  SystemMessagePromptTemplate,
-  HumanMessagePromptTemplate,
-  ChatPromptTemplate,
-  MessagesPlaceholder,
-} from "langchain/prompts";
+import { PromptTemplate } from "langchain/prompts";
+import { StructuredOutputParser } from "langchain/output_parsers";
+import { OpenAI } from "langchain";
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.setHeader("Content-Type", "application/octet-stream");
-  res.setHeader("Transfer-Encoding", "chunked");
+  const model = new OpenAI({ temperature: 0 });
 
-  const chat = new ChatOpenAI({
-    streaming: true,
-    callbacks: [
-      {
-        handleLLMNewToken(token: string) {
-          res.write(token);
-        },
-      },
-    ],
+  const parser = StructuredOutputParser.fromNamesAndDescriptions({
+    communication_style: "Communication style",
+    // communication_style_review: "Review of Communication style",
+    communication_style_guage_value:
+      "Number range of 1 to 100 for Communication style",
+    emotional_tone: "Emotional tone",
+    // emotional_tone_review: "Review of Emotional tone",
+    emotional_tone_guage_value: "Number 1 to 100 for Emotional tone",
+    shared_interests: "Shared interests",
+    // shared_interests_review: "Review of Shared interests",
+    shared_interests_guage_value:
+      "Number range of 1 to 100 for Shared interests",
+    compatibility_of_values: "Compatibility of values",
+    // compatibility_of_values_review: "Review of Compatibility of values",
+    compatibility_of_values_guage_value:
+      "Number range of 1 to 100 for Compatibility of values",
+    tips: "Tips to improve user compatibility",
   });
 
-  const chatPrompt = ChatPromptTemplate.fromPromptMessages([
-    SystemMessagePromptTemplate.fromTemplate(
-      "The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know."
-    ),
-    new MessagesPlaceholder("history"),
-    HumanMessagePromptTemplate.fromTemplate("{input}"),
-  ]);
+  const formatInstructions = parser.getFormatInstructions();
 
-  const chain = new ConversationChain({
-    memory: new BufferMemory({ returnMessages: true, memoryKey: "history" }),
-    prompt: chatPrompt,
-    llm: chat,
+  const prompt = new PromptTemplate({
+    template:
+      "You are Lovin, a personal love compatibility meter, you'll analyze the chat \n{format_instructions}\n{chat}\n",
+    inputVariables: ["chat"],
+    partialVariables: { format_instructions: formatInstructions },
   });
 
-  async function generateChat(input: string) {
-    await chain.call({
-      input,
+  async function generateChat(chat: string) {
+    const input = await prompt.format({
+      chat: chat,
     });
 
-    res.end();
+    const response = await model.call(input);
+
+    const structuredResponse = await parser.parse(response);
+
+    res.status(200).json(structuredResponse);
   }
 
   if (req.method === "POST") {
